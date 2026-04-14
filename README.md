@@ -1,73 +1,47 @@
-# React + TypeScript + Vite
+# GTT — Tabletweaving Thingy
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern web-based clone of Guntram's Tabletweaving Thingy (GTT), a pattern design tool for [tablet/card weaving](https://en.wikipedia.org/wiki/Tablet_weaving).
 
-Currently, two official plugins are available:
+The original GTT was a Windows desktop application written in Delphi, last updated in 2004. This project reimplements it as a browser app with full compatibility with the original `.gtt` file format.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Features (Phase 1)
 
-## React Compiler
+- **DoubleFace pattern editor** — click or drag to paint foreground/background cells across a card × block grid
+- **Card setup** — configure threading direction (S/Z) and hole colours per card
+- **Colour palette** — 16-colour palette with colour picker; left-click sets foreground, right-click sets background
+- **Weaving preview** — live canvas rendering of what the woven band will look like
+- **File compatibility** — open and save `.gtt` files in the original GTT XML format
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Planned (Phase 2 & 3)
 
-## Expanding the ESLint configuration
+- Threaded pattern editor (turn/twist actions per pick)
+- BrokenTwill support
+- Brocade editor
+- LetteredBand patterns and font (`.gtf`) support
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Usage
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+Visit the live app: **https://avalonink.github.io/gtt-weaving/**
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+Or run locally:
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## File format
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+GTT files are XML with a `<TWData>` root element. The format is documented in the original author's specification. This app reads and writes `.gtt` files compatible with GTT v1.16.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Development
+
+Built with React 18, TypeScript, and Vite.
+
+```bash
+npm run dev      # development server
+npm run build    # production build
+npm run preview  # preview production build locally
 ```
+
+Deploys automatically to GitHub Pages on push to `main` via the included workflow.
