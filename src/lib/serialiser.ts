@@ -39,7 +39,7 @@ function simple(name: string, value: string | number): string {
 function serialisePalette(p: Palette): string {
   const colours = p.colours
     .slice(0, 16)
-    .map((c, i) => `  ${simple(`Colour Index="${i + 1}"`, c)}`)
+    .map((c, i) => `  ${tag('Colour', c, { Index: i + 1 })}`)
     .join('\n');
   return tag('Palette', `\n${colours}\n`, { Name: p.name, Size: p.colours.length });
 }
