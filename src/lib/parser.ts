@@ -253,8 +253,17 @@ function parseLetteredBand(patternEl: Element): LetteredBandPattern {
 
 // ---- Top-level entry points ----
 
+function normalisePatternType(raw: string): AnyPattern['type'] {
+  switch (raw.toLowerCase()) {
+    case 'doubleface':   return 'DoubleFace';
+    case 'brokentwill':  return 'BrokenTwill';
+    case 'letteredband': return 'LetteredBand';
+    default:             return raw as AnyPattern['type'];
+  }
+}
+
 function parsePatternElement(patternEl: Element): AnyPattern {
-  const type = attr(patternEl, 'Type') as AnyPattern['type'];
+  const type = normalisePatternType(attr(patternEl, 'Type'));
   switch (type) {
     case 'Threaded':     return parseThreaded(patternEl);
     case 'DoubleFace':   return parseDoubleFace(patternEl);
