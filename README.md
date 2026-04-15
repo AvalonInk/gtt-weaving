@@ -1,8 +1,13 @@
-# GTT — Tabletweaving Thingy
+# GTTR — Guntram's Tabletweaving Thingy Reborn
 
 A modern web-based clone of Guntram's Tabletweaving Thingy (GTT), a pattern design tool for [tablet/card weaving](https://en.wikipedia.org/wiki/Tablet_weaving).
 
 The original GTT was a Windows desktop application written in Delphi, last updated in 2004. This project reimplements it as a browser app with full compatibility with the original `.gtt` file format.
+
+Original author's website here: https://www.guntram.co.za/tabletweaving/gtt.htm
+Neither of the download links for the program work anymore and it looks like this was the only drafting program that let you flip tablets on the pattern itself instead of just in the threading chart. So I dug up a .zip from the bowels of archive.org and cracked it open. Ironically, it's easier to start rebuilding the functionality without the part I wanted most.
+
+Any and all testing is appreciated!
 
 ## Features (Phase 1)
 
