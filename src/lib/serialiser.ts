@@ -1,5 +1,6 @@
 // GTT XML Serialiser
 // Converts TypeScript data structures back to .gtt / .gtf XML
+// Output format matches original GTT v1.17 files exactly.
 
 import type {
   GTTFile, GTFFontFile, AnyPattern,
@@ -34,19 +35,31 @@ function simple(name: string, value: string | number): string {
   return `<${name}>${esc(String(value))}</${name}>`;
 }
 
+// ---- Colour format conversion ----
+// Internal: 6-char uppercase hex RGB string e.g. "FF0000"
+// GTT file: decimal Windows COLORREF integer e.g. 255  (= R + G*256 + B*65536)
+
+function hexToColorRef(hex: string): number {
+  const r = parseInt(hex.slice(0, 2), 16) || 0;
+  const g = parseInt(hex.slice(2, 4), 16) || 0;
+  const b = parseInt(hex.slice(4, 6), 16) || 0;
+  return r + g * 256 + b * 65536;
+}
+
 // ---- Shared structures ----
 
 function serialisePalette(p: Palette): string {
   const colours = p.colours
     .slice(0, 16)
-    .map((c, i) => `  ${tag('Colour', c, { Index: i + 1 })}`)
+    .map((c, i) => `  ${tag('Colour', String(hexToColorRef(c)), { Index: i + 1 })}`)
     .join('\n');
   return tag('Palette', `\n${colours}\n`, { Name: p.name, Size: p.colours.length });
 }
 
 function serialiseCard(card: Card): string {
+  // Convert 1-based internal indices back to 0-based for GTT
   const holes = card.holeColours
-    .map(h => `    ${simple('Colour', h.colourIndex)}`)
+    .map(h => `    ${simple('Colour', h.colourIndex - 1)}`)
     .join('\n');
   const holesTag = tag('Holes', `\n${holes}\n`, { Count: card.holes });
   let inner = `\n  ${holesTag}\n  ${simple('Threading', card.threading)}\n`;
@@ -59,7 +72,7 @@ function serialiseCard(card: Card): string {
   }
   if (card.curHoleColours) {
     const curHoles = card.curHoleColours
-      .map(h => `    ${simple('Colour', h.colourIndex)}`)
+      .map(h => `    ${simple('Colour', h.colourIndex - 1)}`)
       .join('\n');
     inner += `  ${tag('CurHoles', `\n${curHoles}\n`, { Count: card.holes })}\n`;
   }
@@ -82,6 +95,21 @@ function serialisePacks(packs: Pack[]): string {
     return tag('Pack', `\n${packInner}\n`, { Name: p.name });
   }).join('\n');
   return tag('Packs', `\n${inner}\n`, { Count: packs.length });
+}
+
+// ---- Data block serialisation ----
+// GTT format: <P_N> child elements, '.' = background ('0'), 'X' = foreground ('1'),
+// stored in reverse order: P_Length first, P1 last.
+
+function serialiseDataBlock(data: string[]): string {
+  const rows = data
+    .map((row, i) => {
+      const n = i + 1;
+      const converted = row.replace(/1/g, 'X').replace(/0/g, '.');
+      return `  <P${n}>${converted}</P${n}>`;
+    })
+    .reverse(); // P_Length first → P1 last
+  return '\n' + rows.join('\n') + '\n';
 }
 
 // ---- Threaded pattern ----
@@ -115,7 +143,6 @@ function serialiseThreaded(p: ThreadedPattern): string {
 // ---- DoubleFace pattern ----
 
 function serialiseDoubleFace(p: DoubleFacePattern, typeOverride?: string): string {
-  const dataContent = '\n' + p.data.join('\n') + '\n';
   const parts = [
     simple('Name', p.name),
     simple('Width', p.width),
@@ -123,16 +150,15 @@ function serialiseDoubleFace(p: DoubleFacePattern, typeOverride?: string): strin
     simple('ColourCount', p.colourCount),
     serialiseCards(p.cards),
     serialisePalette(p.palette),
-    tag('Data', dataContent),
+    tag('Data', serialiseDataBlock(p.data)),
   ];
-  return tag('Pattern', `\n${parts.join('\n')}\n`, { Type: typeOverride ?? 'DoubleFace' });
+  // Use 'Doubleface' (original GTT casing) unless overridden
+  return tag('Pattern', `\n${parts.join('\n')}\n`, { Type: typeOverride ?? 'Doubleface' });
 }
 
 // ---- BrokenTwill pattern ----
 
 function serialiseBrokenTwill(p: BrokenTwillPattern): string {
-  const reversalsContent = '\n' + p.reversals.join('\n') + '\n';
-  const dataContent = '\n' + p.data.join('\n') + '\n';
   const parts = [
     simple('Name', p.name),
     simple('Width', p.width),
@@ -140,8 +166,8 @@ function serialiseBrokenTwill(p: BrokenTwillPattern): string {
     simple('ColourCount', p.colourCount),
     serialiseCards(p.cards),
     serialisePalette(p.palette),
-    tag('Data', dataContent),
-    tag('Reversals', reversalsContent),
+    tag('Data', serialiseDataBlock(p.data)),
+    tag('Reversals', serialiseDataBlock(p.reversals)),
   ];
   return tag('Pattern', `\n${parts.join('\n')}\n`, { Type: 'BrokenTwill' });
 }
@@ -221,7 +247,7 @@ export function serialiseGTTFile(file: GTTFile): string {
     simple('Version', file.version),
     serialisePattern(file.pattern),
   ].join('\n');
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<TWData>\n${inner}\n</TWData>`;
+  return `<TWData>\n${inner}\n</TWData>`;
 }
 
 export function serialiseGTFFile(file: GTFFontFile): string {
@@ -230,5 +256,5 @@ export function serialiseGTFFile(file: GTFFontFile): string {
     simple('Version', file.version),
     serialiseFont(file.font),
   ].join('\n');
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<TWData>\n${inner}\n</TWData>`;
+  return `<TWData>\n${inner}\n</TWData>`;
 }

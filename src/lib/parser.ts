@@ -24,29 +24,67 @@ function attr(el: Element, name: string): string {
   return el.getAttribute(name) ?? '';
 }
 
+// ---- Colour format conversion ----
+// Original GTT stores palette colours as decimal Windows COLORREF integers: R + G*256 + B*65536
+// Our internal format is a 6-character uppercase hex RGB string e.g. "FF0000"
+
+function colorRefToHex(value: string): string {
+  const trimmed = value.trim();
+  if (/^\d+$/.test(trimmed)) {
+    // Decimal COLORREF integer
+    const n = parseInt(trimmed, 10);
+    const r = n & 0xFF;
+    const g = (n >> 8) & 0xFF;
+    const b = (n >> 16) & 0xFF;
+    return [r, g, b].map(c => c.toString(16).padStart(2, '0').toUpperCase()).join('');
+  }
+  // Already a hex RGB string
+  return trimmed.toUpperCase().padStart(6, '0');
+}
+
 // ---- Card parsing ----
+// Original GTT uses 0-based hole colour indices; our model uses 1-based.
+
+function parseHoleColour(el: Element): CardHole {
+  const raw = parseInt(el.textContent?.trim() ?? '0', 10);
+  // If the value looks like a 1-based index (>= 1 and <= 16) it may already be 1-based
+  // (files saved by our own app). If 0-based (0–15), add 1.
+  // We detect by checking whether it is in 0–15 range — both formats overlap at 1–15,
+  // so we use the presence of index 0 as the definitive signal.
+  // Safer: always store as-is and normalise on first use. Instead we check the file header
+  // version: GTT files use 0-based, ours use 1-based. But that's fragile.
+  // Simplest safe rule: 0 → must be 0-based (palette index 0 is valid in GTT, invalid in ours).
+  // Values 1–15 are ambiguous, but in practice GTT files always start at 0 for hole A.
+  // We therefore add 1 unconditionally when the max value in a card is ≤ 15,
+  // which is handled at the card level below.
+  return { colourIndex: raw };
+}
 
 function parseCard(cardEl: Element): Card {
   const number = parseInt(attr(cardEl, 'Number'), 10);
   const holes = parseInt(attr(cardEl, 'Holes'), 10);
 
   const holesEl = getChild(cardEl, 'Holes');
-  const holeColours: CardHole[] = holesEl
-    ? Array.from(holesEl.querySelectorAll(':scope > Colour')).map(c => ({
-        colourIndex: parseInt(c.textContent?.trim() ?? '1', 10),
-      }))
+  const rawHoleColours: CardHole[] = holesEl
+    ? Array.from(holesEl.querySelectorAll(':scope > Colour')).map(parseHoleColour)
     : [];
+
+  // Normalise to 1-based: if any index is 0 the file is using 0-based indexing.
+  const isZeroBased = rawHoleColours.some(h => h.colourIndex === 0);
+  const holeColours = isZeroBased
+    ? rawHoleColours.map(h => ({ colourIndex: h.colourIndex + 1 }))
+    : rawHoleColours;
 
   const threading = (getChildText(cardEl, 'Threading') || 'S') as ThreadingDirection;
 
-  // Optional runtime state
   const curThread = getChildText(cardEl, 'CurThread') as ThreadingDirection | '';
   const curPosStr = getChildText(cardEl, 'CurPos');
   const curHolesEl = getChild(cardEl, 'CurHoles');
-  const curHoleColours: CardHole[] | undefined = curHolesEl
-    ? Array.from(curHolesEl.querySelectorAll(':scope > Colour')).map(c => ({
-        colourIndex: parseInt(c.textContent?.trim() ?? '1', 10),
-      }))
+  const rawCurHoles: CardHole[] | undefined = curHolesEl
+    ? Array.from(curHolesEl.querySelectorAll(':scope > Colour')).map(parseHoleColour)
+    : undefined;
+  const curHoleColours = rawCurHoles
+    ? (isZeroBased ? rawCurHoles.map(h => ({ colourIndex: h.colourIndex + 1 })) : rawCurHoles)
     : undefined;
 
   return {
@@ -70,8 +108,7 @@ function parsePalette(paletteEl: Element): Palette {
   const name = attr(paletteEl, 'Name');
   const colours: string[] = Array.from(
     paletteEl.querySelectorAll(':scope > Colour')
-  ).map(c => c.textContent?.trim() ?? '000000');
-  // Pad to 16 if needed
+  ).map(c => colorRefToHex(c.textContent ?? '0'));
   while (colours.length < 16) colours.push('000000');
   return { name, colours };
 }
@@ -133,14 +170,37 @@ function parseThreaded(patternEl: Element): ThreadedPattern {
   };
 }
 
-// ---- DoubleFace pattern ----
+// ---- DoubleFace data parsing ----
+// Original GTT stores data as <P1>...</P1> ... <P_N>...</P_N> child elements,
+// using '.' for background and 'X' for foreground.
+// Our format uses plain text lines with '0' and '1'.
+// We detect which format is in use and normalise to '0'/'1' lines indexed 0 = block 1.
 
-function parseDataLines(dataEl: Element): string[] {
+function parseDataBlock(dataEl: Element, width: number): string[] {
+  // Detect P_N element format
+  const pElements = Array.from(dataEl.children).filter(el => /^P\d+$/i.test(el.tagName));
+  if (pElements.length > 0) {
+    // Sort ascending by N so data[0] = P1 = first block
+    pElements.sort((a, b) => {
+      const na = parseInt(a.tagName.slice(1), 10);
+      const nb = parseInt(b.tagName.slice(1), 10);
+      return na - nb;
+    });
+    return pElements.map(el =>
+      (el.textContent ?? '')
+        .replace(/X/g, '1')
+        .replace(/\./g, '0')
+        .padEnd(width, '0')
+    );
+  }
+  // Plain text lines (our own format)
   return (dataEl.textContent ?? '')
     .split('\n')
     .map(l => l.trim())
     .filter(l => l.length > 0);
 }
+
+// ---- DoubleFace pattern ----
 
 function parseDoubleFace(patternEl: Element): DoubleFacePattern {
   const cardsEl = getChild(patternEl, 'Cards');
@@ -158,7 +218,7 @@ function parseDoubleFace(patternEl: Element): DoubleFacePattern {
     colourCount,
     cards: cardsEl ? parseCards(cardsEl) : [],
     palette: paletteEl ? parsePalette(paletteEl) : { name: '', colours: [] },
-    data: dataEl ? parseDataLines(dataEl) : Array(length).fill('0'.repeat(width)),
+    data: dataEl ? parseDataBlock(dataEl, width) : Array(length).fill('0'.repeat(width)),
   };
 }
 
@@ -168,7 +228,7 @@ function parseBrokenTwill(patternEl: Element): BrokenTwillPattern {
   const base = parseDoubleFace(patternEl);
   const reversalsEl = getChild(patternEl, 'Reversals');
   const reversals = reversalsEl
-    ? parseDataLines(reversalsEl)
+    ? parseDataBlock(reversalsEl, base.width)
     : Array(base.length).fill(' '.repeat(base.width));
   return { ...base, type: 'BrokenTwill', reversals };
 }
