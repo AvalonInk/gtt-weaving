@@ -318,6 +318,7 @@ function normalisePatternType(raw: string): AnyPattern['type'] {
     case 'doubleface':   return 'DoubleFace';
     case 'brokentwill':  return 'BrokenTwill';
     case 'letteredband': return 'LetteredBand';
+    case 'threaded-in':  return 'Threaded';   // GTT variant name for the same structure
     default:             return raw as AnyPattern['type'];
   }
 }
