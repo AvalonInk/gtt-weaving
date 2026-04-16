@@ -134,7 +134,8 @@ function parsePicks(picksEl: Element): Pick[] {
     const actionsEl = getChild(pickEl, 'Actions');
     const actions: WeavingAction[] = actionsEl
       ? Array.from(actionsEl.querySelectorAll(':scope > Action')).map(a => {
-          const type = attr(a, 'ActionType') as 'Turn' | 'Twist';
+          // Original GTT files use Type="Turn"; our serialiser writes ActionType="Turn"
+          const type = (attr(a, 'Type') || attr(a, 'ActionType')) as 'Turn' | 'Twist';
           const target = attr(a, 'Target') as 'Card' | 'Pack';
           const targetId = attr(a, 'TargetID');
           if (type === 'Turn') {
