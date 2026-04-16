@@ -116,8 +116,9 @@ function serialiseDataBlock(data: string[]): string {
 
 function serialisePick(pick: Pick): string {
   const actions = pick.actions.map(a => {
+    // Original GTT uses Type="Turn", not ActionType="Turn"
     const attrs: Record<string, string | number> = {
-      ActionType: a.type,
+      Type: a.type,
       Target: a.target,
       TargetID: a.targetId,
       Dir: a.dir,
@@ -129,15 +130,25 @@ function serialisePick(pick: Pick): string {
   return tag('Pick', `\n${actionsTag}\n`, { Index: pick.index });
 }
 
+const EMPTY_SELVEDGES =
+  '<Selvedges>\n  <Left>\n    <Cards Count="0"/>\n  </Left>\n  <Right>\n    <Cards Count="0"/>\n  </Right>\n</Selvedges>';
+
 function serialiseThreaded(p: ThreadedPattern): string {
+  // GTT requires: Name, Notes, Selvedges, Cards, Packs, Picks, Palette (in this order)
+  const packsEl = p.packs && p.packs.length > 0
+    ? serialisePacks(p.packs)
+    : tag('Packs', '', { Count: 0 });
   const parts = [
     simple('Name', p.name),
+    '<Notes/>',
+    EMPTY_SELVEDGES,
     serialiseCards(p.cards),
-    ...(p.packs ? [serialisePacks(p.packs)] : []),
-    serialisePalette(p.palette),
+    packsEl,
     tag('Picks', p.picks.map(serialisePick).join('\n'), { Count: p.picks.length }),
+    serialisePalette(p.palette),
   ];
-  return tag('Pattern', `\n${parts.join('\n')}\n`, { Type: 'Threaded' });
+  // GTT only recognises "Threaded-in", not "Threaded"
+  return tag('Pattern', `\n${parts.join('\n')}\n`, { Type: 'Threaded-in' });
 }
 
 // ---- DoubleFace pattern ----
@@ -245,6 +256,7 @@ export function serialiseGTTFile(file: GTTFile): string {
   const inner = [
     simple('Source', SOURCE),
     simple('Version', file.version),
+    '<Release/>',
     serialisePattern(file.pattern),
   ].join('\n');
   return `<TWData>\n${inner}\n</TWData>`;
