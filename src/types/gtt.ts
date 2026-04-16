@@ -197,6 +197,41 @@ export function defaultPalette(): Palette {
   };
 }
 
+export function newBrokenTwillPattern(width = 12, length = 20): BrokenTwillPattern {
+  const base = newDoubleFacePattern(width, length);
+  return {
+    ...base,
+    type: 'BrokenTwill',
+    reversals: Array.from({ length }, () => '0'.repeat(width)),
+  };
+}
+
+export function newThreadedPattern(cardCount = 8, pickCount = 20): ThreadedPattern {
+  const palette = defaultPalette();
+  const cards: Card[] = Array.from({ length: cardCount }, (_, i) => ({
+    number: i + 1,
+    holes: 4,
+    holeColours: [
+      { colourIndex: 1 },
+      { colourIndex: 1 },
+      { colourIndex: 2 },
+      { colourIndex: 2 },
+    ],
+    threading: (i % 2 === 0 ? 'S' : 'Z') as ThreadingDirection,
+  }));
+  const picks: Pick[] = Array.from({ length: pickCount }, (_, i) => ({
+    index: i,
+    actions: cards.map(c => ({
+      type: 'Turn' as const,
+      target: 'Card' as const,
+      targetId: String(c.number),
+      dir: 'F' as const,
+      dist: 1 as const,
+    })),
+  }));
+  return { type: 'Threaded', name: 'New Pattern', cards, palette, picks };
+}
+
 export function newDoubleFacePattern(width = 12, length = 20): DoubleFacePattern {
   const palette = defaultPalette();
   const cards: Card[] = Array.from({ length: width }, (_, i) => ({

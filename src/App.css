@@ -231,3 +231,56 @@ a { color: #7878d8; }
 .df-cell:hover { outline: 1px solid rgba(255,255,255,0.4); }
 
 .df-hint { margin-top: 8px; font-size: 11px; color: #666; }
+
+/* ---- BrokenTwill reversal mark ---- */
+.reversal-mark {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75em;
+  color: rgba(255, 255, 255, 0.65);
+  pointer-events: none;
+  line-height: 1;
+}
+
+/* ---- Mode buttons (BrokenTwill paint/reversal toggle) ---- */
+.mode-btn { font-size: 12px; }
+.mode-btn.active {
+  background: #3a3a7a;
+  border-color: #9090dd;
+  color: #d0d0ff;
+}
+
+/* ---- Pattern type select in header ---- */
+.pattern-type-select {
+  font-size: 13px;
+  padding: 4px 6px;
+  border-radius: 4px;
+}
+
+/* ---- Threaded editor ---- */
+.th-editor { user-select: none; }
+
+.th-cell {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-family: monospace;
+  border: 0.5px solid rgba(0, 0, 0, 0.25);
+  cursor: crosshair;
+}
+.th-cell:hover { outline: 1px solid rgba(255, 255, 255, 0.35); }
+
+.th-legend { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+
+/* ---- Unsupported pattern placeholder ---- */
+.unsupported-editor {
+  padding: 32px;
+  color: #888;
+  font-size: 14px;
+  line-height: 2;
+}
